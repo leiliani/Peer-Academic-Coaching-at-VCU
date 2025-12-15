@@ -1,0 +1,193 @@
+---
+title: "Peer Academic Coaching Overflow Room Usage (Fall 2025)"
+author: "Leiliani Clark"
+date: "2025-11-20"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+# Background
+
+B14 in Hibbs Hall is home to the vast majority of PAC appointments. There are four tables in the room for PACs to hold their coaching appointments. This was sustainable in the past, but in recent semesters, the number of appointments PACs have been holding each week have been steadily increasing. This semester, Fall 2025, has had the largest number of appointments in the program's history, with an average of 150-200 appointments per week. Because of this, there are more appointments that overlap, and many coaches must seek other rooms to hold their appointments when B14 is full. 
+
+**B41**
+
+B41 is one room that is available for PACs to use as overflow. However, many PACs have expressed discontent with using that room because of how loud it gets if there are even two appointments being held at one time, let alone four (which is the max for B41).
+
+**B24**
+
+B24 is another room that PACs may use as overflow, but it is shared with professors that use it as a classroom. PACs must check the calendar to ensure there will not be a classroom at the time they are holding their appointment. 
+
+**Other**
+
+Lastly, because of the vast amount of PACs that hold appointments at once, some PACs have resorted to using other locations to hold their appointments, such as the couches within B14 (adding a fifth appointment at once makes the room extremely loud and prevents students from using the couches as a waiting area) or the couches outside of B16 (less privacy). 
+
+**Appointment Location Form**
+
+This semester, the PAC supervisors have asked PACs to keep record of where they hold their appointments and record it each week through a Google form. A .csv file of the form submissions was downloaded each week and filtered to identify how many PACs did not respond for the last week's appointments. These identified PACs were emailed and asked to fill out the the form to the best of their memory. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# Load libraries
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(tidyr)
+
+# Read file
+file <- read.csv("PAC B24 Appointment Use (Responses) - Form Responses 1.csv", header = TRUE)
+
+# Rename column names
+file <- file %>%
+  dplyr::rename(week = What.week.are.you.filling.this.form.out.for.,
+                B24 = How.many.appointments.did.you.have.in.B24..NOT.A.TYPO.THIS.IS.THE.CLASSROOM.NEXT.TO.B14..this.week.,
+                B41 = How.many.appointments.did.you.have.in.B41..NOT.A.TYPO.THIS.IS.THE.OVERFLOW.ROOM.ALL.THE.WAY.BEHIND.B14..this.week.,
+                other = How.many.appointments.did.you.have.in.areas.outside.of.B14..B41..and.B24..e.g..couches.in.basement..area.near.B41.....SPECIFY.AREA)
+```
+
+```{r, include=FALSE}
+# Check for duplicate entries 
+# Create list of all the specific weeks
+weeks = unique(file$week)
+
+# Loop through each week and print rows of duplicate email addresses
+for (i in weeks) {
+  temp = file %>% dplyr::filter (week == i)
+  duplicated_emails <- duplicated(temp$Email.Address) | duplicated(temp$Email.Address, fromLast = TRUE)
+  print(temp[duplicated_emails, ])
+}
+
+# Create list of duplicate entries (based on the older submission and keeping the newer)
+remove_timestamps <- c("9/4/2025 13:09:15", "9/5/2025 14:03:48", "9/6/2025 8:49:52", "9/12/2025 17:56:54", "	11/17/2025 12:55:47", "10/6/2025 11:52:11", "10/6/2025 15:26:38", "11/11/2025 19:38:23", "11/2/2025 18:33:45", "11/12/2025 11:48:06")
+
+# Remove duplicates
+filtered_file <- file %>%
+  dplyr::filter(!Timestamp %in% remove_timestamps)
+
+# Find n/a or string inputs and change to ints
+filtered_file$B24[filtered_file$B24 == "n/a"] <- 0
+filtered_file$other[filtered_file$other == "N/A"] <- 0
+filtered_file$other[filtered_file$other == ""] <- 0
+filtered_file$other[filtered_file$other == "1 in B24"] <- 1
+filtered_file$other[filtered_file$other == "2: couches in basement "] <- 2
+filtered_file$other[filtered_file$other == "1- couches in basement."] <- 1
+filtered_file$other[filtered_file$other == "1- couches in basement"] <- 1
+
+# Change data type from strings to ints
+filtered_file$B24  <- as.integer(filtered_file$B24)
+filtered_file$B41  <- as.integer(filtered_file$B41)
+filtered_file$other <- as.integer(filtered_file$other)
+```
+
+# Data Analysis
+
+Data was collected from Aug 24-29 to Nov 30-Dec 5. The week of Fall break was not included. 10 duplicate entries were removed from the dataset, with a total n = 312. 
+
+## Total Number of Appointments Held Outside B14 During Fall 2025
+
+```{r, include=FALSE}
+# get total nums
+total_B24 <- sum(filtered_file$B24)
+total_B41 <- sum(filtered_file$B41)
+total_other <- sum(filtered_file$other)
+
+# create a new dataframe of the total nums
+overall_totals <- data.frame(
+  location=c("B24", "B41", "Couch Area") ,  
+  total=c(total_B24, total_B41, total_other)
+  )
+
+# bar chart
+p <- ggplot(overall_totals, aes(x = location, y = total, fill = location)) +
+  geom_col(position = "dodge") +
+  labs(title = "Total Number of Appointments Held Outside B14 During Fall 2025",
+       x = "Appointment Location",
+       y = "Total Number of Appointments Held") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r, echo=FALSE}
+# interactive plot
+ggplotly(p)
+```
+
+Over the entire semester, excluding the last week of appointments, there were **338** appointments held outside of the B14 tables. There were **278** appointments held in B41, as this is the first overflow room PACs are asked to go to. B24 is a new overflow room, yet still held **54** total appointments. There were **6** appointments held at the couches in B14, making those times where B14 housed 5 total appointments at once. 
+
+## Number of Appointments Held Outside B14 by Week
+
+```{r, include=FALSE}
+# create list of weeks 
+week_order <- c(
+  "Aug 24-29",
+  "Aug 31-Sept 5",
+  "Sept 7-12",
+  "Sept 14-19",
+  "Sept 21-26",
+  "Sept 28-Oct 3",
+  "Oct 5-10",
+  "Oct 12-17",
+  "Oct 19-24",
+  "Oct 26-31",
+  "Nov 2-7",
+  "Nov 9-14",
+  "Nov 16-21",
+  "Nov 30-Dec 5"
+)
+
+# convert week to ordered factor
+filtered_file$week <- factor(filtered_file$week, levels = week_order)
+
+# reshape to long format
+df_long <- filtered_file %>%
+  pivot_longer(cols = c(B24, B41, other),
+               names_to = "Location",
+               values_to = "Count")
+
+# summarize totals per week per location
+df_summary <- df_long %>%
+  group_by(week, Location) %>%
+  summarise(Total = sum(Count, na.rm = TRUE), .groups = "drop")
+
+# bar chart
+p2 <- ggplot(df_summary, aes(x = week, y = Total, fill = Location)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Number of Appointments Held Outside B14 by Week",
+    x = "Week",
+    y = "Number of Appointments Held"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r, echo=FALSE}
+# interactive plot
+ggplotly(p2)
+```
+
+The week with the most appointments held in B41 was **Sept. 14-19** with 29 appointments. The week with the most appointments held in B24 was **Sept. 7-12** with 14 appointments. There were not as many recorded appointments that took place outside of these two locations, but this may be because this location was added to the Google form halfway through the semester. The week of Nov 30-Dec 5 only had 12 form submissions, so this may not accurately reflect how many appointments were held outside of B14.
+
+## Percentage of Appointments Held Inside and Outside of B14
+
+```{r, echo=FALSE}
+# get nums and labels for pie chart
+nums <- c(338, 957)
+labels <- c("Outside of B14", "B14")
+
+# Calculate percentages
+piepercent <- round(100 * nums / sum(nums), 1)
+# Create the pie chart with percentages as labels
+pie(nums, labels = piepercent, main = "Percentage of Appointments Held Inside and Outside of B14", col = c("red", "blue"))
+# Add a legend
+legend("topright", labels, cex = 0.8, fill = c("red", "blue"))
+```
+
+A **fourth** of all appointments held this semester were outside of B14. 338 out of 1281 total appointments! This shows the need to expand the Peer Academic Coaching spaces to adapt to the rapidly growing number of PAC appointments. 
