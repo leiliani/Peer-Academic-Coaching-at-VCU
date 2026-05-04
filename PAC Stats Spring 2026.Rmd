@@ -1,0 +1,207 @@
+---
+title: "Peer Academic Coaching Overflow Room Usage (Spring 2026)"
+author: "Leiliani Clark"
+date: "2026-04-25"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+# Background
+
+B14 in Hibbs Hall is home to the vast majority of PAC appointments. There are four tables in the room for PACs to hold their coaching appointments. This was sustainable in the past, but in recent semesters, the number of appointments PACs have been holding each week have been steadily increasing. Last semester, Fall 2025, we tracked the number of appointments PACs were holding in overflow rooms. This showed us that the PAC program has expanded so rapidly that we are in need of extra space to hold appointments in. 
+
+**B41**
+
+B41 is one room that is available for PACs to use as overflow. However, many PACs have expressed discontent with using that room because of how loud it gets if there are even two appointments being held at one time, let alone four (which is the max for B41).
+
+**B24**
+
+B24 is another room that PACs may use as overflow, but it is shared with professors that use it as a classroom. PACs must check the calendar to ensure there will not be a classroom at the time they are holding their appointment. 
+
+**Other**
+
+Lastly, because of the vast amount of PACs that hold appointments at once, some PACs have resorted to using other locations to hold their appointments, such as the couches within B14 (adding a fifth appointment at once makes the room extremely loud and prevents students from using the couches as a waiting area) or the couches outside of B16 (less privacy). 
+
+**Appointment Location Form**
+
+This semester, the PAC supervisors have asked PACs to keep record of where they hold their appointments and record it each week through a Google form. A .csv file of the form submissions was downloaded each week and filtered to identify how many PACs did not respond for the last week's appointments. These identified PACs were emailed and asked to fill out the the form to the best of their memory. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# Load libraries
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(tidyr)
+
+# Read file
+file <- read.csv("~/Downloads/PAC Weekly Appointment Location Form Spring 2026.csv", header = TRUE)
+
+# Rename column names
+file <- file %>%
+  dplyr::rename(week = What.week.are.you.filling.this.form.out.for.,
+                B24 = How.many.appointments.did.you.have.in.B24..NOT.A.TYPO.THIS.IS.THE.CLASSROOM.NEXT.TO.B14..this.week.,
+                B41 = How.many.appointments.did.you.have.in.B41..NOT.A.TYPO.THIS.IS.THE.OVERFLOW.ROOM.ALL.THE.WAY.BEHIND.B14..this.week.,
+                other = How.many.appointments.did.you.have.in.areas.outside.of.the.B14.tables..B41..or.B24..e.g..couches.in.basement..area.near.B41.....SPECIFY.AREA)
+```
+
+```{r, include=FALSE}
+filtered_file <- file 
+
+# Find n/a or string inputs and change to ints
+filtered_file$B24[filtered_file$B24 == "n/a"] <- 0
+filtered_file$B24[filtered_file$B24 == "Zero"] <- 0
+filtered_file$B24[is.na(filtered_file$B24)] <- 0
+
+
+filtered_file$B41[filtered_file$B41 == "n/a"] <- 0
+filtered_file$B41[filtered_file$B41 == "Zero"] <- 0
+filtered_file$B41[is.na(filtered_file$B41)] <- 0
+
+filtered_file$other[filtered_file$other == "n/a"] <- 0
+filtered_file$other[filtered_file$other == ""] <- 0
+filtered_file$other[filtered_file$other == "Zero"] <- 0
+filtered_file$other[filtered_file$other == "Zoom"] <- 1
+filtered_file$other[filtered_file$other == "ZOOM"] <- 1
+filtered_file$other[filtered_file$other == "1 couches in basement"] <- 1
+filtered_file$other[filtered_file$other == "1; tables outside of b41"] <- 1
+filtered_file$other[is.na(filtered_file$other)] <- 0
+
+# Change data type from strings to ints
+filtered_file$B24  <- as.integer(filtered_file$B24)
+filtered_file$B41  <- as.integer(filtered_file$B41)
+filtered_file$other <- as.integer(filtered_file$other)
+```
+
+```{r, include=FALSE}
+week_map <- c(
+  "Jan 12-18"    = "Jan 12-16",
+  "Jan 19-25"    = "Jan 18-23",
+  "Jan 26-Feb 1" = "Jan 25-30"
+)
+
+filtered_file$week <- ifelse(filtered_file$week %in% names(week_map), week_map[filtered_file$week], filtered_file$week)
+
+filtered_file <- subset(filtered_file, week != "")
+```
+
+```{r, include=FALSE}
+filtered_file <- subset(filtered_file, week != "Jan 25-30")
+```
+
+```{r, include=FALSE}
+filtered_file <- subset(filtered_file, week != "Apr 26-28")
+```
+
+# Data Analysis
+
+Data was collected from Jan. 12-18 to Apr. 19-24. The week where there was a snow storm and VCU was virtual (Jan 25-30) was not included. The week of Spring break was also not included. This left a sample size of n = 326 entries. 
+
+## Total Number of Appointments Held Outside B14 During Spring 2026
+
+```{r, include=FALSE}
+# get total nums
+total_B24 <- sum(filtered_file$B24)
+total_B41 <- sum(filtered_file$B41)
+total_other <- sum(filtered_file$other)
+
+# create a new dataframe of the total nums
+overall_totals <- data.frame(
+  location=c("B24", "B41", "Other") ,  
+  total=c(total_B24, total_B41, total_other)
+  )
+
+# bar chart
+p <- ggplot(overall_totals, aes(x = location, y = total, fill = location)) +
+  geom_col(position = "dodge") +
+  labs(title = "Total Number of Appointments Held Outside B14 During Spring 2026",
+       x = "Appointment Location",
+       y = "Total Number of Appointments Held") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r, echo=FALSE}
+# interactive plot
+ggplotly(p)
+```
+
+Over the entire semester, excluding the last week of appointments, there were **71** appointments held outside of the B14 tables. There were **59** appointments held in B41, as this is the first overflow room PACs are asked to go to. B24 is a new overflow room, yet still held **8** total appointments. There were **4** appointments held at the couches in B14 or outside of B41. 
+
+## Number of Appointments Held Outside B14 by Week
+
+```{r, include=FALSE}
+# create list of weeks 
+week_order <- c(
+  "Jan 12-16",
+  "Jan 18-23",
+  "Jan 25-30",
+  "Feb 1-6",
+  "Feb 8-13",
+  "Feb 15-20",
+  "Feb 22-27",
+  "Mar 1-6 (Week before Spring Break)",
+  "Mar 16-20",
+  "Mar 22-27",
+  "Mar 29-Apr 3",
+  "Apr 5-10",
+  "Apr 12-17",
+  "Apr 19-24"
+)
+
+# convert week to ordered factor
+filtered_file$week <- factor(filtered_file$week, levels = week_order)
+
+# reshape to long format
+df_long <- filtered_file %>%
+  pivot_longer(cols = c(B24, B41, other),
+               names_to = "Location",
+               values_to = "Count")
+
+# summarize totals per week per location
+df_summary <- df_long %>%
+  group_by(week, Location) %>%
+  summarise(Total = sum(Count, na.rm = TRUE), .groups = "drop")
+
+# bar chart
+p2 <- ggplot(df_summary, aes(x = week, y = Total, fill = Location)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Number of Appointments Held Outside B14 by Week",
+    x = "Week",
+    y = "Number of Appointments Held"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r, echo=FALSE}
+# interactive plot
+ggplotly(p2)
+```
+
+The week with the most appointments held in B41 was **Feb. 22-27** with **10** appointments. The week with the most appointments held in B24 was **Feb. 15-20** with **3** appointments. 
+
+## Percentage of Appointments Held Inside and Outside of B14
+
+```{r, echo=FALSE}
+# get nums and labels for pie chart
+nums <- c(71, 1232)
+labels <- c("Outside of B14", "B14")
+
+# Calculate percentages
+piepercent <- round(100 * nums / sum(nums), 1)
+# Create the pie chart with percentages as labels
+pie(nums, labels = piepercent, main = "Percentage of Appointments Held Inside and Outside of B14", col = c("red", "blue"))
+# Add a legend
+legend("topright", labels, cex = 0.8, fill = c("red", "blue"))
+```
+
+**71** out of the **1303** total appointments held this semester were held outside of B14.
